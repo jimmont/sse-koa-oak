@@ -1,12 +1,14 @@
-#sse-koa-oak
+**sse-koa-oak**
 
-server-sent event middleware, see <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">WHATWG</a>, <a href="https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events">MDN</a>
+server-sent event middleware, for more detail see <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">WHATWG</a> and <a href="https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events">MDN</a>
 
-INSTALL + USE
 -------
+
+**install + use**
+
 `npm install --save git+https://github.com/jimmont/sse-koa-oak.git`
 
-see example in [example.js](example.js)
+see [example.js](example.js)
 
 **NOTE** `SSEMiddleware` must be used after compress()
 
@@ -17,12 +19,13 @@ const SSEMiddleware = require('sse-koa-oak');
 // import SSEMiddleware from 'sse-koa-oak';
 
 app.use( SSEMiddleware({
-	// do heartbeat() every ping seconds, default 60
-	ping: 120,
+	ping: 120, // do heartbeat() every ping seconds, default 60
+	max: 1234, // max users
 	// setup ctx.response.sse for requests where route() returns truthy value
 	route: (request)=>{
 		return request.URL.pathname.startsWith('/eventstream');
 	}
+	// see DEFAULT_OPTIONS for more configurable options for ping
 }) );
 app.use(async ({request, response}, next) => {
 	// response.sse is a writable stream, an EventSource in the browser
@@ -33,6 +36,10 @@ app.use(async ({request, response}, next) => {
 	sse.end(); 
 });
 ```
+
+events: `open` followed by built-in `hello`, `ping` on interval, `bye` on close followed by `error`, example and source provide more detail
+
+503 `unavailable` response sent to client when max is reached
 
 MIT License
 ------

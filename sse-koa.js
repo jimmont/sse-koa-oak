@@ -5,10 +5,11 @@ const DEFAULT_OPTIONS = {
 	route: ()=>{ return true; },
 	timer: null,
 	pool: null,
+	// NOTE pool is a set, not an array
 	heartbeat: function(options){
 		options.pool.forEach(options._heartbeat, options);
 	},
-	_heartbeat: function(sse, i, pool){
+	_heartbeat: function(sse){
 		sse.send({event: 'ping'});
 	}
 }
