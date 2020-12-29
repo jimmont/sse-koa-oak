@@ -1,6 +1,5 @@
 import assert from 'assert';
 import SSEMiddlewareSetup from './sse-koa.js';
-import url from 'url';
 import { app, port, count } from './example.js';
 
 import puppeteer from 'puppeteer-core';
@@ -47,6 +46,8 @@ const browser = await puppeteer.launch(config);
 const page = await browser.newPage();
 await page.goto(`http://localhost:${ port }`);
 const tested = await page.waitForFunction('self.tested');
+
+
 await browser.close();
 
 

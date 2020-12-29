@@ -1,19 +1,19 @@
 {
-	"name": "sse-koa",
+	"name": "sse-koa-oak",
 	"type": "module",
 	"about": "https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"description": "server-sent event middleware for koa",
 	"main": "sse-koa.js",
 	"engines": {
 		"node": ">=14.x"
 	},
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "node ./test.js"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/jimmont/sse-koa.git"
+		"url": "git+https://github.com/jimmont/sse-koa-oak.git"
 	},
 	"keywords": [
 		"sse",
@@ -21,18 +21,14 @@
 		"server-sent events"
 	],
 	"contributors": [
-		{
-			"url": "https://github.com/yklykl530"
-		},
-		{
-			"url": "https://github.com/jimmont"
-		}
+		{ "url": "https://github.com/jimmont" },
+		{ "url": "https://github.com/yklykl530" }
 	],
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/jimmont/sse-koa/issues"
+		"url": "https://github.com/jimmont/sse-koa-oak/issues"
 	},
-	"homepage": "https://github.com/jimmont/sse-koa#readme",
+	"homepage": "https://github.com/jimmont/sse-koa-oak#readme",
 	"devDependencies": {
 		"koa": "^2.x",
 		"puppeteer-core": "^5.x"

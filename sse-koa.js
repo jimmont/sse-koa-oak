@@ -13,15 +13,15 @@ const DEFAULT_OPTIONS = {
 	}
 }
 /**
- * SSE server-sent events middleware for Koa
+ * server-sent event middleware for Koa
  * @param {Object} options
  * @param {Number} options.max maximum client count; default 10000
  * @param {Number} options.ping heartbeat ping timer interval in seconds, minimum 1; default 60 (1 minute)
- * @param {function} options.route optionally apply middleware to routes that return truthy value, given request object, for example: (request)=>{ return request.URL.pathname.startsWith('/sse'); }; default allows all, ()=>true;
+ * @param {function} options.route optionally apply middleware to routes that return truthy value, given request object, for example: (request)=>{ return request.URL.pathname.startsWith('/sse'); }; default allows all
  * @param {function} options.heartbeat the ping function called with signature (options)
  * @param {function} options._heartbeat default pool iterator for each ping
  */
-export default function SSEMiddlewareSetup(options = {}){
+function SSEMiddlewareSetup(options = {}){
 	options = Object.assign({}, DEFAULT_OPTIONS, options);
 	options.pool = new Set();
 	
@@ -35,25 +35,29 @@ export default function SSEMiddlewareSetup(options = {}){
 		const { response, request } = ctx;
 		const { max, pool, route } = options;
 		if ( !route( request )){
-			return await next();
+			return next();
 		}
 		if (response.headersSent) {
-			if (!(response.sse instanceof SSETransform)) {
+			if (!(response.sse instanceof ServerSentEventStream)) {
 				ctx.throw(500, 'SSE header sent, unable to respond');
 			}
-			return await next();
+			return next();
 		}
 
 		if (pool.size >= max) {
 			ctx.throw(503, 'SSE client maximum exceeded, unavailable');
-			return await next();
+			return next();
 		}
 
-		const sse = new SSETransform(ctx);
+		const sse = new ServerSentEventStream(ctx);
 		pool.add(sse);
-		sse.on('close', function() {
+		function unsubscribe(){
 			pool.delete(sse);
-		});
+			sse.removeListener('close', unsubscribe);
+			sse.removeListener('error', unsubscribe);
+		}
+		sse.on('error', close);
+		sse.on('close', close);
 		response.sse = sse;
 		await next();
 		if (!response.body) {
@@ -70,14 +74,10 @@ export default function SSEMiddlewareSetup(options = {}){
 		}
 	}
 }
-/*
-see also
-* https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events
-* https://nodejs.org/api/stream.html#stream_class_stream_transform
-* https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events
-* https://github.com/koajs/examples/tree/master/stream-server-side-events
-*/
-class SSETransform extends Stream.Transform {
+/**
+
+**/
+class ServerSentEventStream extends Stream.Transform {
 	constructor(context, options) {
 		super({
 			writableObjectMode: true
@@ -123,6 +123,14 @@ class SSETransform extends Stream.Transform {
 		};
 	}
 	_dataLines(line){ return this.prefix + line; }
+	/*
+transform stream to valid 'data: <value>\n\n' style server-sent events
+see also
+* https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events
+* https://nodejs.org/api/stream.html#stream_class_stream_transform
+* https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events
+* https://github.com/koajs/examples/tree/master/stream-server-side-events
+	 */
 	_transform(data, encoding, callback) {
 		let sender, dataLines, prefix = 'data: ';
 		const res = [];
@@ -164,3 +172,4 @@ class SSETransform extends Stream.Transform {
 		callback()
 	}
 }
+export { SSEMiddlewareSetup as default, SSEMiddlewareSetup, SSEMiddleware, ServerSentEventStream };

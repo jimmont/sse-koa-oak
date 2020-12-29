@@ -1,5 +1,5 @@
 import Application from 'koa';
-import SSEMiddlewareSetup from './sse-koa.js';
+import SSEMiddleware from './sse-koa.js';
 const port = 8900;
 //const compress = require('koa-compress');
 //const cors = require('@koa/cors');
@@ -84,8 +84,9 @@ app.on('error', (error, context)=>{
 	console.warn({info:'app error', error, context});
 });
 
-app.use( SSEMiddlewareSetup({
-	ping: 2,
+app.use( SSEMiddleware({
+	ping: 1,
+	max: 2,
 	route: function( request ){
 		return request.URL.pathname.startsWith('/sse');
 	}

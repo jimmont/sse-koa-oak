@@ -1,73 +1,43 @@
-sse-koa
-===
-> sse <a href="https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events">server-sent event</a> middleware, use stream programming model
-<a href="https://communityinviter.com/apps/koa-js/koajs" rel="KoaJs Slack Community">![KoaJs Slack](https://img.shields.io/badge/Koa.Js-Slack%20Channel-Slack.svg?longCache=true&style=for-the-badge)</a>
+#sse-koa-oak
 
-Install
----
-> npm install --save git+https://github.com/jimmont/sse-koa.git#master
+server-sent event middleware, see <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">WHATWG</a>, <a href="https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events">MDN</a>
 
-Usage
----
-see [example.js](example.js)
+INSTALL + USE
+-------
+`npm install --save git+https://github.com/jimmont/sse-koa-oak.git`
+
+see example in [example.js](example.js)
+
+**NOTE** `SSEMiddleware` must be used after compress()
+
 ```js
-const Application = require('koa');
-const SSEMiddlewareSetup = require('sse-koa');
-const app = new Application();
-const port = 8765;
-app.use( SSEMiddlewareSetup({
+// import the middleware
+const SSEMiddleware = require('sse-koa-oak');
+// or where package.json has "type": "module" instead use:
+// import SSEMiddleware from 'sse-koa-oak';
+
+app.use( SSEMiddleware({
 	// do heartbeat() every ping seconds, default 60
 	ping: 120,
-	// setup response.sse for requests where route() returns truthy value, default all requests
+	// setup ctx.response.sse for requests where route() returns truthy value
 	route: (request)=>{
-		return request.URL.pathname.startsWith('/sse');
+		return request.URL.pathname.startsWith('/eventstream');
 	}
 }) );
 app.use(async ({request, response}, next) => {
-	// context.response.sse is a writable stream
+	// response.sse is a writable stream, an EventSource in the browser
 	const { sse } = response;
-	// middleware results in client seeing 'open' event on an EventSource
+	// middleware results in client seeing 'open' event
 	sse.send('hello listeners'); // client sees 'message' event
-	// close the connection
-	sse.end(); // client sees 'error' event
+	// close the connection: client sees 'error' event
+	sse.end(); 
 });
-app.listen( port );
-console.log(`open http://localhost:${ port }`);
 ```
-a writable stream 
-> sse.send(data)
-```js
-/**
- * 
- * @param {String} data sse data to send, if it's a string, an anonymous event will be sent.
- * @param {Object} data sse send object mode
- * @param {Object|String} data.data data to send, if it's object, it will be converted to json
- * @param {String} data.event sse event name
- * @param {Number} data.id sse event id
- * @param {Number} data.retry sse retry times
- * @param {*} encoding not use
- * @param {function} callback same as the write method callback
- */
-send(data, encoding, callback)
-```
->ctx.sse.end()
-close the connection
-
-**NOTE** `SSEMiddleware` must be used after compress() if compression is used
-
-CHANGES
-------
-1.0.0
-* cleanup, test
-* ES Modules, Nodejs >= 14.x
-0.x
-* all prior see https://github.com/yklykl530/koa-sse.git
 
 MIT License
 ------
 
 Copyright (c) 2020 jimmont.com
-Copyright (c) 2018 kailu
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -86,3 +56,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+CHANGES
+------
+0.1.0 2020-12
+* cleanup, test
+* ES Modules, Nodejs >= 14.x
+* based on several prior implementations including https://github.com/yklykl530/koa-sse.git
+
