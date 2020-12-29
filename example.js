@@ -28,7 +28,12 @@ pre, code{font-family:"SF Mono", "Monaco", "Inconsolata", "Fira Mono", "Droid Sa
 const eventSource = new EventSource("http://localhost:${ port }/sse");
 const result = [];
 function report(event){
-	const { type, data } = event;
+	const { type, data, origin } = event;
+	if (origin !== self.location.origin ){
+	// NOTE recommended for security
+		return;
+		// NOTE after this point validate content based on the use-case
+	};
 	const node = document.querySelector('pre');
 	result.push({type, data});
 
