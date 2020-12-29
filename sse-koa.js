@@ -9,7 +9,7 @@ const DEFAULT_OPTIONS = {
 		options.pool.forEach(options._heartbeat, options);
 	},
 	_heartbeat: function(sse, i, pool){
-		sse.send(':');
+		sse.send({event: 'ping'});
 	}
 }
 /**
@@ -39,13 +39,17 @@ function SSEMiddlewareSetup(options = {}){
 		}
 		if (response.headersSent) {
 			if (!(response.sse instanceof ServerSentEventStream)) {
-				ctx.throw(500, 'SSE header sent, unable to respond');
+				response.status = 500;
+				response.body = response.message = 'header sent, unable to respond';
+				ctx.throw(response.status, response.message);
 			}
 			return next();
 		}
 
 		if (pool.size >= max) {
-			ctx.throw(503, 'SSE client maximum exceeded, unavailable');
+			response.status = 503;
+			response.body = response.message = 'sse client maximum exceeded, unavailable';
+			ctx.throw(response.status, response.message);
 			return next();
 		}
 
@@ -56,8 +60,8 @@ function SSEMiddlewareSetup(options = {}){
 			sse.removeListener('close', unsubscribe);
 			sse.removeListener('error', unsubscribe);
 		}
-		sse.on('error', close);
-		sse.on('close', close);
+		sse.on('error', unsubscribe);
+		sse.on('close', unsubscribe);
 		response.sse = sse;
 		await next();
 		if (!response.body) {
@@ -74,9 +78,6 @@ function SSEMiddlewareSetup(options = {}){
 		}
 	}
 }
-/**
-
-**/
 class ServerSentEventStream extends Stream.Transform {
 	constructor(context, options) {
 		super({
@@ -85,22 +86,25 @@ class ServerSentEventStream extends Stream.Transform {
 		this.options = options;
 		this.context = context;
 		this.ended = false;
-		context.request.socket.setTimeout(0);
-		context.request.socket.setNoDelay(true);
-		context.request.socket.setKeepAlive(true);
-		context.response.set({
+		const { request, response } = context;
+		const { socket } = request;
+		socket.setTimeout(0);
+		socket.setNoDelay(true);
+		socket.setKeepAlive(true);
+		response.set({
 			'Content-Type': 'text/event-stream; charset=utf-8',
 			'Cache-Control': 'no-cache, no-transform',
 			'Connection': 'keep-alive',
 			'X-Accel-Buffering': 'no'
 		});
-		this.send(':ok');
+		this.send({event:'hello'});
 	}
 	/**
 	 * @param { String | Object } data to send, if a string an anonymous event will be sent, 
 	 * @param { ANY } data.data data to send as JSON stringified
-	 * @param { Number } data.id sse event id
-	 * @param { Number } data.retry sse retry times
+	 * @param { Number } data.id sse event `id: <id>`
+	 * @param { Number } data.retry sse `retry: <retry>` time in ms
+	 * @param { String } data.event `event: <event>` for custom events of any type, eg 'ping'
 	 * @param { function } callback
 	 * @see _transform() below
 	 */
@@ -112,6 +116,7 @@ class ServerSentEventStream extends Stream.Transform {
 		};
 	}
 	end(data, callback) {
+		this.send({event: 'bye'});
 		this.ended = true;
 		super.end(data, encodeURI, callback);
 	}
@@ -122,49 +127,54 @@ class ServerSentEventStream extends Stream.Transform {
 			return err.message;
 		};
 	}
-	_dataLines(line){ return this.prefix + line; }
+	_dataLines(line){
+		if(line.startsWith(':') || line.startsWith('data: ')){
+			return line;
+		}else{
+			return this.prefix + line;
+		}
+	}
 	/*
 transform stream to valid 'data: <value>\n\n' style server-sent events
 see also
-* https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events
-* https://nodejs.org/api/stream.html#stream_class_stream_transform
-* https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events
-* https://github.com/koajs/examples/tree/master/stream-server-side-events
+https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events
+https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events
+
+https://github.com/koajs/examples/tree/master/stream-server-side-events
+https://nodejs.org/api/stream.html#stream_class_stream_transform
+
+TODO document {data, retry, id, event}
 	 */
 	_transform(data, encoding, callback) {
-		let sender, dataLines, prefix = 'data: ';
-		const res = [];
-		if (typeof data === 'string') {
-			sender = {data};
-		} else {
+		let sender;
+		const out = [];
+		if (typeof data === 'object') {
 			sender = data;
-		}
-		if (sender.event) res.push('event: ' + sender.event);
-		if (sender.retry) res.push('retry: ' + sender.retry);
-		if (sender.id) res.push('id: ' + sender.id);
-
-		if (typeof sender.data === 'object') {
-			dataLines = this.stringify(sender.data);
-			res.push(prefix + dataLines);
-		} else if (sender.data === undefined) {
-			// Send an empty string even without data
-			res.push(prefix);
 		} else {
-			sender.data = String(sender.data);
-			let commentPattern = /^\s*:\s*/;
-			if(commentPattern.test(sender.data)){
-				sender.data = sender.data.replace(commentPattern, '');
-				prefix = ': ';
-			}
-			sender.data = sender.data.replace(/[\r\n]+/g, '\n');
-			dataLines = sender.data.split(/\n/);
-			
-			res.push(...dataLines.map(this._dataLines, {prefix}));
+			sender = {data};
 		}
-		const message = (res.join('\n')).toString('utf8') + '\n\n';
+		if(sender.event) out.push('event: ' + sender.event);
+		if(sender.retry) out.push('retry: ' + sender.retry);
+		if(sender.id) out.push('id: ' + sender.id);
+		let content, prefix = 'data: ';
+		if(sender.data === undefined){
+		// apparently some clients require data to register events
+			content = '';
+		}else if (typeof sender.data === 'object') {
+			content = this.stringify(sender.data);
+		} else {
+			// coerce to a string
+			content = String(sender.data).trimStart();
+			// comment content
+			if(content.startsWith(':')) prefix = ': ';
+		}
+		out.push( ...content.split(/[\r\n]+/).map(this._dataLines, {prefix}) );
+
+		const message = (out.join('\n')).toString('utf8') + '\n\n';
 		this.push(message);
+		// dispatch event for anything listening... why?
 		this.emit('message', message);
-		// compatible with koa-compress
+		// compatible with koa-compress (TODO test)
 		const { body } = this.context;
 		if (body && typeof body.flush === 'function' && body.flush.name !== 'deprecated') {
 			body.flush();
@@ -172,4 +182,4 @@ see also
 		callback()
 	}
 }
-export { SSEMiddlewareSetup as default, SSEMiddlewareSetup, SSEMiddleware, ServerSentEventStream };
+export { SSEMiddlewareSetup as default, ServerSentEventStream };

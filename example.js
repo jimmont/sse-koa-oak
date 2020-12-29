@@ -52,6 +52,9 @@ function report(event){
 	console.log( {type, data, event} );
 }
 eventSource.onmessage = eventSource.onerror = eventSource.onopen = report;
+eventSource.addEventListener('hello',report);
+eventSource.addEventListener('bye',report);
+eventSource.addEventListener('ping',report);
 </script>
 
 	</body>
@@ -61,6 +64,7 @@ eventSource.onmessage = eventSource.onerror = eventSource.onopen = report;
 const count = 7;
 function example({ request, response }){
 	let n = 0;
+
 	let interval = setInterval(() => {
 		let date = (new Date()).toString();
 		response.sse.send(date);
@@ -89,9 +93,10 @@ app.use( SSEMiddleware({
 	max: 2,
 	route: function( request ){
 		return request.URL.pathname.startsWith('/sse');
-	}
+	},
 }) );
 
+app.tested = [];
 app.use(async (ctx, next) => {
 	const { request, response } = ctx;
 	switch(request.URL.pathname){
@@ -106,11 +111,10 @@ app.use(async (ctx, next) => {
 	case '/report':
 		if(request.method === 'POST'){
 			const body = await requestbody(ctx);
-			app.results = JSON.parse(body);
-		}else if(!app.results){
-			app.results = [];
+			app.tested.push( JSON.parse(body) );
 		}
-		response.body = {results: app.results.length};
+		response.status = 204;
+		response.body = null;
 	break;
 	case '/sse':
 		example(ctx, next);
