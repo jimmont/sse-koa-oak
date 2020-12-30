@@ -165,7 +165,7 @@ function requestbody(ctx){
 	return new Promise((resolve, reject)=>{
 		const incoming = [];
 		const { req, request } = ctx;
-		req.on('data', (data)=>{ incoming.push( data.toString() ); });
+		req.on('data', (data)=>{ incoming.push( data.toString('utf8') ); });
 		req.on('end', (data)=>{
 			const body = incoming.join('\n');
 			request.body = body;
