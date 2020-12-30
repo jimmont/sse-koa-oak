@@ -1,16 +1,12 @@
-**sse-koa-oak**
+**sse-koa-oak** server-sent event middleware, for more detail see <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">WHATWG</a> and <a href="https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events">MDN</a>
 
-server-sent event middleware, for more detail see <a href="https://html.spec.whatwg.org/multipage/server-sent-events.html">WHATWG</a> and <a href="https://developer.mozilla.org/docs/Web/API/Server-sent_events/Using_server-sent_events">MDN</a>
-
--------
-
-**install + use**
-
-`npm install --save git+https://github.com/jimmont/sse-koa-oak.git`
+**install + use** `npm install --save git+https://github.com/jimmont/sse-koa-oak.git`
 
 see [example.js](example.js)
 
-**NOTE** `SSEMiddleware` must be used after compress()
+**NOTE** `SSEMiddleware` must be used after compress();
+
+**Supports** Nodejs latest LTS, evergreen browsers, ES modules, aims to enable transitioning between <a href="https://koajs.com">Koa</a> and <a href="https://deno.land/x/oak">Oak</a>
 
 ```js
 // import the middleware
