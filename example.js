@@ -38,16 +38,20 @@ function report(event){
 	result.push({type, data});
 
 	switch(type){
-	case 'error':
+	case 'bye':
 		eventSource.close();
 		function done(res){
-			return self.tested = res;
+		// test will watch for this to complete
+			return self.tested = res.tested;
 		};
 		fetch('/report', {method: 'POST', headers: new Headers({"content-type":"application/json; charset=utf-8"}), body: JSON.stringify(result)})
-		.then(res=>res.text())
+		.then(res=>res.json())
 		.then(done)
 		.catch(done)
 		;
+	break;
+	case 'error':
+		console.error(event);
 	break;
 	};
 
@@ -60,6 +64,21 @@ eventSource.onmessage = eventSource.onerror = eventSource.onopen = report;
 eventSource.addEventListener('hello',report);
 eventSource.addEventListener('bye',report);
 eventSource.addEventListener('ping',report);
+window.onload = function loaded(){
+	if(eventSource.readyState === 2){
+		// likely 503, confirm and report:
+		function done(res){
+			const { status, statusText } = res;
+			console.warn({status, res});
+			const event = new CustomEvent('error', {detail: res});
+			event.origin = new URL(event.detail.url).origin;
+			event.data = \`\${ status } \${ statusText }\`;
+			report( event );
+			self.tested = status;
+		}
+		fetch('/sse').then(done).catch(done);
+	}
+};
 </script>
 
 	</body>
@@ -114,12 +133,14 @@ app.use(async (ctx, next) => {
 		response.body = '';
 	break;
 	case '/report':
+		let tested = app.tested, received = null;
 		if(request.method === 'POST'){
 			const body = await requestbody(ctx);
-			app.tested.push( JSON.parse(body) );
+			received = JSON.parse(body);
+			tested.push( received );
 		}
-		response.status = 204;
-		response.body = null;
+		response.status = 200;
+		response.body = {tested: tested.length, received};
 	break;
 	case '/sse':
 		example(ctx, next);
