@@ -103,10 +103,10 @@ function example({ request, response }){
 	let interval = setInterval(() => {
 		let date = (new Date()).toString();
 		response.sse.send(date);
-		console.log('broadcast', date);
+		console.log('🕊  broadcast', date);
 		n++;
 		if (n >= count) {
-			console.log('send manual close');
+			console.log('🖖 send manual close');
 			response.sse.end();
 		}
 	}, 1000);
@@ -117,19 +117,18 @@ function example({ request, response }){
 }
 
 app.on('error', (error, context)=>{
-	if(context === undefined){
-		console.error(error);
-	};
-	console.warn({info:'app error', error, context});
+	const { request, response } = context;
+	console.warn(`⚡️ app error "${ error.message }"${ context ? ( ['', request.url, response.status].join(' ') ):'' }`);
 });
 
-app.use( SSEMiddleware({
+const config = {
 	ping: 1,
 	max: 2,
 	route: function( request ){
 		return request.URL.pathname.startsWith('/sse');
 	},
-}) );
+};
+app.use( SSEMiddleware(config) );
 
 app.tested = [];
 app.use(async (ctx, next) => {
@@ -177,6 +176,8 @@ function requestbody(ctx){
 }
 
 app.listen( port );
-console.log(`open http://localhost:${ port }`);
+console.log(`
+open http://localhost:${ port }
+`);
 
-export { app, port, count };
+export { app, port, count, config };
