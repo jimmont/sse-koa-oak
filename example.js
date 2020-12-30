@@ -64,8 +64,10 @@ eventSource.onmessage = eventSource.onerror = eventSource.onopen = report;
 eventSource.addEventListener('hello',report);
 eventSource.addEventListener('bye',report);
 eventSource.addEventListener('ping',report);
-window.onload = function loaded(){
-	if(eventSource.readyState === 2){
+
+function loaded(){
+	switch(eventSource.readyState){
+	case 2:
 		// likely 503, confirm and report:
 		function done(res){
 			const { status, statusText } = res;
@@ -77,8 +79,17 @@ window.onload = function loaded(){
 			self.tested = status;
 		}
 		fetch('/sse').then(done).catch(done);
+	break;
+	case 0:
+	// not open yet
+		setTimeout(loaded, 100);
+	break;
+	case 1:
+	// ok
+	break;
 	}
 };
+window.onload = loaded;
 </script>
 
 	</body>
